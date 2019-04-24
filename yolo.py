@@ -2,11 +2,11 @@
 """
 Class definition of YOLO_v3 style detection model on image and video
 """
-
+import cv2
 import colorsys
 import os
 from timeit import default_timer as timer
-
+    
 import numpy as np
 from keras import backend as K
 from keras.models import load_model
@@ -170,7 +170,6 @@ class YOLO(object):
         self.sess.close()
 
 def detect_video(yolo, video_path, output_path=""):
-    import cv2
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
