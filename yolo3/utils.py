@@ -1,9 +1,16 @@
 """Miscellaneous utility functions."""
 
-from functools import reduce
+import time
+import numpy as np
 
 from PIL import Image
-import numpy as np
+from statistics import mean
+from functools import reduce
+from datetime import timedelta
+from itertools import groupby
+
+import matplotlib.pyplot as plt
+from keras.callbacks import Callback
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
 def compose(*funcs):
@@ -119,3 +126,44 @@ def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jit
         box_data[:len(box)] = box
 
     return image_data, box_data
+
+
+def plot_training_summary(training_summary, time_summary=None, savepath=""):
+    if time_summary:
+        print('Training time: '
+              f'{timedelta(seconds=time_summary.training_time)}(HH:MM:SS)')
+        print('Epoch time avg: '
+              f'{timedelta(seconds=mean(time_summary.epoch_times))}(HH:MM:SS)')
+    hist = sorted(training_summary.history.items(),
+                  key=lambda x: (x[0].replace('val_', ''), x[0]))
+    
+    timestr = time.strftime("%Y%m%d-%H%M%S")
+
+    epochs = [e + 1 for e in training_summary.epoch]
+    for metric, values in groupby(hist,
+                                  key=lambda x: x[0].replace('val_', '')):
+        if 'val_loss' in training_summary.history:
+            val0, val1 = tuple(values)
+            plt.plot(epochs, val0[1], epochs, val1[1], '--', marker='o')
+        else:
+            val0 = tuple(values)[0]
+            plt.plot(epochs, val0[1], '--', marker='o')
+        plt.xlabel('epoch'), plt.ylabel(val0[0])
+        plt.legend(('Train set', 'Validation set'))
+        plt.savefig(savepath + "tranining_summary_" + timestr + ".png")
+        plt.show()
+
+
+class TimeSummary(Callback):
+    def on_train_begin(self, logs={}):
+        self.epoch_times = []
+        self.training_time = time.process_time()
+
+    def on_train_end(self, logs={}):
+        self.training_time = time.process_time() - self.training_time
+
+    def on_epoch_begin(self, batch, logs={}):
+        self.epoch_time_start = time.process_time()
+
+    def on_epoch_end(self, batch, logs={}):
+        self.epoch_times.append(time.process_time() - self.epoch_time_start)

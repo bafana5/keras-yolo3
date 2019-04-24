@@ -10,7 +10,7 @@ from keras.optimizers import Adam
 from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 
 from yolo3.model import preprocess_true_boxes, yolo_body, tiny_yolo_body, yolo_loss
-from yolo3.utils import get_random_data
+from yolo3.utils import get_random_data, plot_training_summary, TimeSummary
 
 
 def _main():
@@ -37,6 +37,7 @@ def _main():
         monitor='val_loss', save_weights_only=True, save_best_only=True, period=3)
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=3, verbose=1)
     early_stopping = EarlyStopping(monitor='val_loss', min_delta=0, patience=10, verbose=1)
+    time_summary = TimeSummary()
 
     val_split = 0.1
     with open(annotation_path) as f:
@@ -56,33 +57,41 @@ def _main():
 
         batch_size = 32
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+        summary = model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
                 steps_per_epoch=max(1, num_train//batch_size),
                 validation_data=data_generator_wrapper(lines[num_train:], batch_size, input_shape, anchors, num_classes),
                 validation_steps=max(1, num_val//batch_size),
-                epochs=50,
+                epochs=12,
                 initial_epoch=0,
                 callbacks=[logging, checkpoint])
         model.save_weights(log_dir + 'trained_weights_stage_1.h5')
+        # score = model.evaluate(X_test, y_test, verbose=0)
+        # print('Test loss:', score[0])
+        # print('Test accuracy:', score[1])
+        plot_training_summary(summary, time_summary, savepath=log_dir)
 
     # Unfreeze and continue training, to fine-tune.
     # Train longer if the result is not good.
-    if True:
-        for i in range(len(model.layers)):
-            model.layers[i].trainable = True
-        model.compile(optimizer=Adam(lr=1e-4), loss={'yolo_loss': lambda y_true, y_pred: y_pred}) # recompile to apply the change
-        print('Unfreeze all of the layers.')
+    # if True:
+    #     for i in range(len(model.layers)):
+    #         model.layers[i].trainable = True
+    #     model.compile(optimizer=Adam(lr=1e-4), loss={'yolo_loss': lambda y_true, y_pred: y_pred}) # recompile to apply the change
+    #     print('Unfreeze all of the layers.')
 
-        batch_size = 32 # note that more GPU memory is required after unfreezing the body
-        print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
-        model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
-            steps_per_epoch=max(1, num_train//batch_size),
-            validation_data=data_generator_wrapper(lines[num_train:], batch_size, input_shape, anchors, num_classes),
-            validation_steps=max(1, num_val//batch_size),
-            epochs=100,
-            initial_epoch=50,
-            callbacks=[logging, checkpoint, reduce_lr, early_stopping])
-        model.save_weights(log_dir + 'trained_weights_final.h5')
+    #     batch_size = 32 # note that more GPU memory is required after unfreezing the body
+    #     print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
+    #     summary = model.fit_generator(data_generator_wrapper(lines[:num_train], batch_size, input_shape, anchors, num_classes),
+    #         steps_per_epoch=max(1, num_train//batch_size),
+    #         validation_data=data_generator_wrapper(lines[num_train:], batch_size, input_shape, anchors, num_classes),
+    #         validation_steps=max(1, num_val//batch_size),
+    #         epochs=100,
+    #         initial_epoch=50,
+    #         callbacks=[logging, checkpoint, reduce_lr, early_stopping])
+    #     model.save_weights(log_dir + 'trained_weights_final.h5')
+    #     # score = model.evaluate(X_test, y_test, verbose=0)
+    #     # print('Test loss:', score[0])
+    #     # print('Test accuracy:', score[1])
+    #     plot_training_summary(summary, time_summary, savepath=log_dir)
 
     # Further training if needed.
 
