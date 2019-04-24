@@ -14,7 +14,7 @@ from yolo3.utils import get_random_data, plot_training_summary, TimeSummary
 
 
 def _main():
-    annotation_path = 'train.txt'
+    annotation_path = 'annotations/train.txt'
     log_dir = 'logs/000/'
     classes_path = 'model_data/ava_classes.txt'
     anchors_path = 'model_data/yolo_anchors.txt'
