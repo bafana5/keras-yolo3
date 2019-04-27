@@ -63,7 +63,7 @@ def _main():
                 validation_steps=max(1, num_val//batch_size),
                 epochs=12,
                 initial_epoch=0,
-                callbacks=[logging, checkpoint])
+                callbacks=[logging, time_summary, checkpoint])
         model.save_weights(log_dir + 'trained_weights_stage_1.h5')
         # score = model.evaluate(X_test, y_test, verbose=0)
         # print('Test loss:', score[0])
